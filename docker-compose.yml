@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for both Order and Delivery services
+  postgres:
+    image: postgres:15-alpine
+    container_name: order-processing-postgres
+    environment:
+      POSTGRES_DB: orderprocessing
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d orderprocessing"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis for idempotency cache
+  redis:
+    image: redis:7-alpine
+    container_name: order-processing-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ElasticMQ as SQS mock for local development
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.5.7
+    container_name: order-processing-sqs
+    ports:
+      - "9324:9324"  # SQS API
+      - "9325:9325"  # Management UI
+    volumes:
+      - ./docker/elasticmq.conf:/opt/elasticmq.conf
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9324/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Order Service (will be added when we build it)
+  order-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.order-service
+    container_name: order-service
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: orderprocessing
+      DB_USER: admin
+      DB_PASSWORD: admin123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SQS_ENDPOINT: http://elasticmq:9324
+      JWT_SECRET: dev-secret-key-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticmq:
+        condition: service_healthy
+    profiles:
+      - services
+
+  # Delivery Service (will be added when we build it)
+  delivery-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.delivery-service
+    container_name: delivery-service
+    ports:
+      - "3002:3002"
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: orderprocessing
+      DB_USER: admin
+      DB_PASSWORD: admin123
+      SQS_ENDPOINT: http://elasticmq:9324
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticmq:
+        condition: service_healthy
+    profiles:
+      - services
+
+volumes:
+  postgres_data:
+  redis_data: 
