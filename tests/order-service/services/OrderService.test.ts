@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { OrderService } from '../OrderService';
-import { Database, redis, sqs } from '../../../shared';
-import { CreateOrderRequest } from '../../../shared';
+import { OrderService } from '../../../src/order-service/services/OrderService';
+import { Database, redis, sqs } from '../../../src/shared';
+import { CreateOrderRequest } from '../../../src/shared';
 
 describe('OrderService', () => {
   let orderService: OrderService;
@@ -126,6 +126,7 @@ describe('OrderService', () => {
       sqsStub.rejects(new Error('SQS failure'));
 
       // Act & Assert
+      // Note: Error logs below are expected for this test scenario (graceful degradation)
       // Should not throw error even if SQS fails
       const result = await orderService.createOrder(mockRequest);
       expect(result).to.deep.equal(mockOrder);

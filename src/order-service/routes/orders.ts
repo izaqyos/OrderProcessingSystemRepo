@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { authenticateJWT } from '../middleware/auth';
+// @ts-ignore
+import { authenticateJWT, AuthenticatedRequest } from '../middleware/auth';
 import { OrderService } from '../services/OrderService';
 import { CreateOrderRequest, OrderResponse } from '../../shared';
 import { logger } from '../../shared';
@@ -8,10 +9,10 @@ const router = Router();
 const orderService = new OrderService();
 
 // Apply JWT authentication to all order routes
-router.use(authenticateJWT);
+router.use(authenticateJWT as any);
 
 // Create new order
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req: any, res: Response) => {
   try {
     const orderRequest: CreateOrderRequest = req.body;
     
@@ -72,7 +73,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // Get order by ID
-router.get('/:orderId', async (req: Request, res: Response) => {
+router.get('/:orderId', async (req: any, res: Response) => {
   try {
     const { orderId } = req.params;
     

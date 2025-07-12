@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { DeliveryService } from '../DeliveryService';
-import { Database, sqs } from '../../../shared';
-import { OrderCreatedEvent } from '../../../shared';
+import { DeliveryService } from '../../../src/delivery-service/services/DeliveryService';
+import { Database, sqs } from '../../../src/shared';
+import { OrderCreatedEvent } from '../../../src/shared';
 
 describe('DeliveryService', () => {
   let deliveryService: DeliveryService;
@@ -61,6 +61,7 @@ describe('DeliveryService', () => {
       databaseStub.rejects(new Error('Database error'));
 
       // Act & Assert
+      // Note: Error logs below are expected for this test scenario
       try {
         await deliveryService.processOrderCreated(mockEvent);
         expect.fail('Should have thrown error');

@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
-import { authenticateJWT, AuthenticatedRequest } from '../auth';
+import { authenticateJWT, AuthenticatedRequest } from '../../../src/order-service/middleware/auth';
 
 describe('JWT Authentication Middleware', () => {
   let req: Partial<AuthenticatedRequest>;
@@ -93,6 +93,7 @@ describe('JWT Authentication Middleware', () => {
       jwtVerifyStub.throws(new jwt.TokenExpiredError('Token expired', new Date()));
 
       // Act
+      // Note: Warning logs below are expected for this test scenario
       authenticateJWT(req as AuthenticatedRequest, res as Response, next);
 
       // Assert
@@ -113,6 +114,7 @@ describe('JWT Authentication Middleware', () => {
       jwtVerifyStub.throws(new jwt.JsonWebTokenError('Invalid token'));
 
       // Act
+      // Note: Warning logs below are expected for this test scenario
       authenticateJWT(req as AuthenticatedRequest, res as Response, next);
 
       // Assert
@@ -133,6 +135,7 @@ describe('JWT Authentication Middleware', () => {
       jwtVerifyStub.throws(new Error('Generic JWT error'));
 
       // Act
+      // Note: Warning logs below are expected for this test scenario
       authenticateJWT(req as AuthenticatedRequest, res as Response, next);
 
       // Assert

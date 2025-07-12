@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL for both Order and Delivery services
   postgres:
@@ -13,12 +11,13 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d orderprocessing"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - order-processing-network
 
   # Redis for idempotency cache
   redis:
@@ -26,14 +25,13 @@ services:
     container_name: order-processing-redis
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
+      interval: 10s
+      timeout: 5s
       retries: 5
+    networks:
+      - order-processing-network
 
   # ElasticMQ as SQS mock for local development
   elasticmq:
@@ -42,13 +40,13 @@ services:
     ports:
       - "9324:9324"  # SQS API
       - "9325:9325"  # Management UI
-    volumes:
-      - ./docker/elasticmq.conf:/opt/elasticmq.conf
+    networks:
+      - order-processing-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9324/health"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider 'http://localhost:9324/?Action=ListQueues&Version=2012-11-05' || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
 
   # Order Service (will be added when we build it)
   order-service:
@@ -105,4 +103,7 @@ services:
 
 volumes:
   postgres_data:
-  redis_data: 
+
+networks:
+  order-processing-network:
+    driver: bridge 

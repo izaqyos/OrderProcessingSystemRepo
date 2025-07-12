@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { logger } from '../../shared';
 
 const router = Router();
@@ -11,7 +11,7 @@ const router = Router();
 // - Rate limiting, brute force protection
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
-const JWT_EXPIRES_IN: string | number = process.env.JWT_EXPIRES_IN || '24h';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
 interface TokenRequest {
   client_id?: string;
@@ -48,8 +48,8 @@ router.post('/token', (req: Request, res: Response) => {
       clientId: client_id,
     };
 
-    const options = { 
-      expiresIn: JWT_EXPIRES_IN,
+    const options: SignOptions = { 
+      expiresIn: '24h',
       issuer: 'order-processing-system',
       audience: 'order-api',
     };

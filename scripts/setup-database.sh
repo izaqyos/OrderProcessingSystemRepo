@@ -48,7 +48,7 @@ fi
 # Wait for PostgreSQL to be ready
 print_step "Waiting for PostgreSQL to be ready..."
 for i in {1..30}; do
-    if PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d postgres -c "SELECT 1" > /dev/null 2>&1; then
+    if PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "SELECT 1" > /dev/null 2>&1; then
         print_success "PostgreSQL is ready"
         break
     fi
@@ -59,9 +59,6 @@ for i in {1..30}; do
     sleep 1
 done
 
-# Create database if it doesn't exist
-print_step "Creating database if it doesn't exist..."
-PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d postgres -c "CREATE DATABASE $DB_NAME;" 2>/dev/null || true
 print_success "Database $DB_NAME is ready"
 
 # Create tables
