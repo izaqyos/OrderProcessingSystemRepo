@@ -12,7 +12,7 @@
     "dev:delivery": "nodemon --exec ts-node src/delivery-service/server.ts",
     "start:order": "node dist/order-service/server.js",
     "start:delivery": "node dist/delivery-service/server.js",
-    "test": "mocha --require ts-node/register 'src/**/*.test.ts'",
+    "test": "mocha --require ts-node/register 'tests/**/*.test.ts'",
     "test:watch": "npm run test -- --watch",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
@@ -26,7 +26,7 @@
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.714.0",
     "axios": "^1.7.9",
-    "axios-retry": "^4.6.0",
+    "axios-retry": "^4.5.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

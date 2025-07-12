@@ -25,6 +25,10 @@ pids
 *.seed
 *.pid.lock
 
+# Service PID files
+.order-service.pid
+.delivery-service.pid
+
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov

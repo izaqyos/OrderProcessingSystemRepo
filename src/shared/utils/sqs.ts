@@ -117,11 +117,12 @@ class SQSService {
   // Health check
   async healthCheck(): Promise<boolean> {
     try {
-      // Simple health check by trying to get queue attributes
+      // Simple health check by trying to receive messages (but not wait)
       const queueUrl = this.getQueueUrl('orders-queue.fifo');
       const command = new ReceiveMessageCommand({
         QueueUrl: queueUrl,
-        MaxNumberOfMessages: 0,
+        MaxNumberOfMessages: 1,
+        WaitTimeSeconds: 0, // Don't wait for messages
       });
       await this.client.send(command);
       return true;

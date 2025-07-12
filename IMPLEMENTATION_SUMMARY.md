@@ -61,6 +61,12 @@ OrderProcessingSystemRepo/
 │       ├── middleware/        # Error handling
 │       ├── routes/           # API endpoints
 │       └── services/         # Business logic, SQS consumer
+├── tests/                     # Unit tests (mirrors src/ structure)
+│   ├── order-service/        # Order Service tests
+│   │   ├── middleware/       # Auth middleware tests
+│   │   └── services/         # OrderService tests
+│   └── delivery-service/     # Delivery Service tests
+│       └── services/         # DeliveryService tests
 ├── demo/                      # Demo scripts and examples
 ├── scripts/                   # Setup and utility scripts
 ├── docker-compose.yml         # Infrastructure setup
@@ -230,7 +236,7 @@ DELIVERY_SERVICE_PORT=3002
 ### Implemented for PoC
 ✅ **Simple but functional**: All core features working
 ✅ **Proper error handling**: Graceful degradation
-   <!-- Graceful degradation means when something goes wrong, the system continues to function as well as possible rather than completely failing. Examples in our system: If Redis goes down → Orders still work (just without idempotency protection). If SQS fails → Order creation succeeds (delivery processing is delayed). If one database query fails → Transaction rolls back cleanly. This ensures partial functionality over total failure - better to have a slow system than a broken system. -->
+   <!-- Graceful degradation principal: when something goes wrong, the system continues to function as well as possible rather than completely failing. Examples in our system: If Redis goes down → Orders still work (just without idempotency protection). If SQS fails → Order creation succeeds (delivery processing is delayed). If one database query fails → Transaction rolls back cleanly. This ensures partial functionality over total failure - better to have a slow system than a broken system. -->
 ✅ **Security basics**: JWT auth, input validation
 ✅ **Monitoring**: Health checks, structured logging
 ✅ **Testing**: Unit tests for critical paths
