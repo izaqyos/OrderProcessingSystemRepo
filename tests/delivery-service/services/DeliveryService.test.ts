@@ -152,6 +152,9 @@ describe('DeliveryService', () => {
       expect(sqsCall.args[1]).to.have.property('eventType', 'ORDER_STATUS_UPDATE');
       expect(sqsCall.args[1]).to.have.property('orderId', 'order-123');
       expect(sqsCall.args[1]).to.have.property('currentStatus', 'SHIPPED');
+      
+      // Verify hybrid FIFO MessageGroupId for status updates (time-partitioned)
+      expect(sqsCall.args[2]).to.match(/^time-partition-\d+$/);
     });
 
     it('should return null for non-existent shipment', async () => {

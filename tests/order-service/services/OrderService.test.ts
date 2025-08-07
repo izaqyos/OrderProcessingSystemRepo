@@ -66,6 +66,9 @@ describe('OrderService', () => {
       expect(sqsCall.args[0]).to.equal('orders-queue.fifo');
       expect(sqsCall.args[1]).to.have.property('eventType', 'ORDER_CREATED');
       expect(sqsCall.args[1]).to.have.property('orderId', 'order-123');
+      
+      // Verify hybrid FIFO MessageGroupId (time-partitioned)
+      expect(sqsCall.args[2]).to.match(/^time-partition-\d+$/);
     });
 
     it('should return cached result for idempotent request', async () => {
