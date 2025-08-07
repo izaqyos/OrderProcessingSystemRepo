@@ -36,10 +36,16 @@ class RedisClient {
   }
 
   // Generate fingerprint for idempotency
-  generateFingerprint(customerId: string, items: any[], timestamp?: string): string {
-    // Simple fingerprint for PoC - production would be more sophisticated
-    const data = `${customerId}:${JSON.stringify(items)}:${timestamp || Date.now()}`;
-    return crypto.createHash('sha256').update(data).digest('hex');
+  generateFingerprint(customerId: string, items: any[]): string {
+    // Create deterministic fingerprint based ONLY on business data
+    // Sort items to ensure consistent ordering
+    const sortedItems = items
+      .map(item => `${item.product_id}:${item.quantity}:${item.unit_price}`)
+      .sort()
+      .join('|');
+    
+    const data = `${customerId}:${sortedItems}`;
+    return crypto.createHash('sha256').update(data).digest('hex').substring(0, 32);
   }
 
   // Check if request was already processed (idempotency)

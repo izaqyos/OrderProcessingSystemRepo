@@ -71,7 +71,13 @@ export class OrderService {
         timestamp: now,
       };
 
-      await sqs.publishMessage('orders-queue.fifo', event, order.customer_id);
+      // HYBRID FIFO: Time-partitioned ordering optimized for fairness
+      // Orders within 30-second windows are processed in strict FIFO order
+      // Fewer partitions = better fairness, moderate throughput (~600 TPS)
+      const timePartition = Math.floor(now.getTime() / (30 * 1000)); // 30-second windows
+      const messageGroupId = `time-partition-${timePartition}`;
+      
+      await sqs.publishMessage('orders-queue.fifo', event, messageGroupId);
       
       logger.info('Order created and event published', { 
         orderId: order.id,

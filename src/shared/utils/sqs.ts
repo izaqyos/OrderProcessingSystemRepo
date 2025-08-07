@@ -29,6 +29,8 @@ class SQSService {
   }
 
   // Publish message to FIFO queue
+  // IMPORTANT: For global FIFO ordering, use same messageGroupId for all messages
+  // This ensures strict chronological processing but limits throughput to 300 TPS
   async publishMessage(queueName: string, message: any, messageGroupId = 'default'): Promise<void> {
     const queueUrl = this.getQueueUrl(queueName);
     const messageBody = JSON.stringify(message);

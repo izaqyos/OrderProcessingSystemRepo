@@ -174,7 +174,12 @@ export class DeliveryService {
           timestamp: new Date(),
         };
 
-        await sqs.publishMessage('order-updates-queue.fifo', event, orderId);
+        // HYBRID FIFO: Time-partitioned ordering optimized for fairness
+        // Status updates use same 30-second windows as order creation for consistency
+        const timePartition = Math.floor(new Date().getTime() / (30 * 1000)); // 30-second windows
+        const messageGroupId = `time-partition-${timePartition}`;
+        
+        await sqs.publishMessage('order-updates-queue.fifo', event, messageGroupId);
         
         logger.info('Order status updated and event published', { 
           orderId, 

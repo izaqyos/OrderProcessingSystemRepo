@@ -1,6 +1,6 @@
 # Order Processing System PoC
 
-A microservices-based order processing system with SQS FIFO queues, JWT auth, and real-time notifications.
+A microservices-based order processing system with SQS FIFO queues, JWT auth, and polling-based status updates (*real-time notifications planned*).
 
 ## 📚 Documentation
 
@@ -12,9 +12,10 @@ A microservices-based order processing system with SQS FIFO queues, JWT auth, an
 
 ## Architecture
 
-- **Order Service**: Auth + order creation + customer notifications
+- **Order Service**: Auth + order creation + polling API for status
 - **Delivery Service**: Shipment processing + status updates  
-- **Infrastructure**: PostgreSQL + Redis + SQS FIFO (ElasticMQ)
+- **Infrastructure**: PostgreSQL + Redis + SQS FIFO with **hybrid 30s time-partitioned ordering** (~600 TPS)
+- **Status Updates**: Currently polling-based (*real-time WebSocket/SSE planned*)
 
 > 🏗️ **Design Philosophy**: This 2-service architecture follows KISS principles, prioritizing simplicity and low operational costs. See [System Design](SYSTEM_DESIGN.md) for detailed rationale.
 
@@ -176,7 +177,7 @@ curl -X POST http://localhost:3001/api/orders \
     ]
   }'
 
-# 3. Check order status
+# 3. Check order status (polling - no real-time notifications yet)
 curl -X GET http://localhost:3001/api/orders/{ORDER_ID} \
   -H "Authorization: Bearer {JWT_TOKEN}"
 

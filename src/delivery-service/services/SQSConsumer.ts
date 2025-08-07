@@ -62,7 +62,8 @@ export class SQSConsumer {
       // Production would use parallel processing with careful ordering
       for (const message of messages) {
         try {
-          await this.processMessage(message);
+          // Add timeout to prevent hanging messages from blocking partition
+          await this.processMessageWithTimeout(message, 30000); // 30-second timeout
           
           // Delete message after successful processing
           await sqs.deleteMessage('orders-queue.fifo', message.receiptHandle);
@@ -71,15 +72,40 @@ export class SQSConsumer {
             messageId: message.messageId 
           });
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          
           logger.error('Failed to process message', { 
             messageId: message.messageId,
-            error: error instanceof Error ? error.message : error 
+            error: errorMessage,
+            receiveCount: message.attributes?.ApproximateReceiveCount || '1'
           });
           
-          // In production, would implement:
-          // - Retry logic with exponential backoff
-          // - Dead letter queue for failed messages
-          // - Message visibility timeout management
+          // CRITICAL: Check retry count to prevent infinite blocking
+          const receiveCount = parseInt(message.attributes?.ApproximateReceiveCount || '1');
+          const maxRetries = 3;
+          
+          if (receiveCount >= maxRetries) {
+            // After max retries, delete message to unblock partition
+            // In production, this would be handled by SQS DLQ automatically
+            logger.error('Message exceeded max retries, deleting to unblock partition', {
+              messageId: message.messageId,
+              receiveCount,
+              maxRetries
+            });
+            
+            try {
+              await sqs.deleteMessage('orders-queue.fifo', message.receiptHandle);
+              
+              // TODO: Send to Dead Letter Queue for manual investigation
+              await this.sendToDeadLetterQueue(message, errorMessage);
+            } catch (deleteError) {
+              logger.error('Failed to delete problematic message', {
+                messageId: message.messageId,
+                deleteError: deleteError instanceof Error ? deleteError.message : deleteError
+              });
+            }
+          }
+          // If under max retries, message will be retried automatically
         }
       }
     } catch (error) {
@@ -87,6 +113,24 @@ export class SQSConsumer {
         error: error instanceof Error ? error.message : error 
       });
     }
+  }
+
+  // Add timeout wrapper to prevent hanging messages
+  private async processMessageWithTimeout(message: any, timeoutMs: number): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(`Message processing timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      try {
+        await this.processMessage(message);
+        clearTimeout(timeout);
+        resolve();
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
+    });
   }
 
   private async processMessage(message: any): Promise<void> {
@@ -120,6 +164,44 @@ export class SQSConsumer {
         error: error instanceof Error ? error.message : error 
       });
       throw error;
+    }
+  }
+
+  // Handle messages that failed max retries to prevent partition blocking
+  private async sendToDeadLetterQueue(message: any, errorReason: string): Promise<void> {
+    try {
+      const dlqMessage = {
+        originalMessageId: message.messageId,
+        originalBody: message.body,
+        errorReason,
+        failedAt: new Date().toISOString(),
+        receiveCount: message.attributes?.ApproximateReceiveCount || 'unknown',
+        // Store partition info for debugging
+        partitionInfo: message.body?.eventType === 'ORDER_CREATED' ? {
+          orderId: message.body?.orderId,
+          customerId: message.body?.customerId,
+          timestamp: message.body?.timestamp
+        } : null
+      };
+
+      logger.warn('Sending failed message to DLQ for manual investigation', {
+        originalMessageId: message.messageId,
+        errorReason,
+        orderId: dlqMessage.partitionInfo?.orderId
+      });
+
+      // In production, this would use actual SQS DLQ
+      // For PoC, we log the DLQ message for manual handling
+      logger.error('DEAD_LETTER_QUEUE_MESSAGE', dlqMessage);
+      
+      // TODO: In production, send to actual DLQ:
+      // await sqs.publishMessage('orders-dlq.fifo', dlqMessage, 'dlq-partition');
+      
+    } catch (dlqError) {
+      logger.error('Failed to send message to DLQ', {
+        originalMessageId: message.messageId,
+        dlqError: dlqError instanceof Error ? dlqError.message : dlqError
+      });
     }
   }
 } 

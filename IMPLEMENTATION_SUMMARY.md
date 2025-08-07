@@ -13,13 +13,14 @@
 Successfully implemented a complete Order Processing System PoC with microservices architecture, featuring:
 
 - **2 Microservices**: Order Service & Delivery Service
-- **JWT Authentication**: OAuth2 Client Credentials flow. Security
+- **JWT Authentication**: OAuth2 Client Credentials flow
 - **Asynchronous Processing**: SQS FIFO queues for reliable message ordering
 - **Database**: PostgreSQL with proper schema and relationships
 - **Caching**: Redis for idempotency and performance
 - **Monitoring**: Health checks and structured logging
 - **Testing**: Unit tests with Mocha, Sinon, and Chai
 - **Demo**: Complete demo scripts and curl examples
+- **Status Updates**: Currently via polling API (*real-time notifications planned*)
 
 ## 🏗️ Architecture
 
@@ -27,15 +28,17 @@ Successfully implemented a complete Order Processing System PoC with microservic
 1. **Order Service** (Port 3001)
    - JWT token generation and validation
    - Order creation with validation
-   - Order retrieval
+   - Order retrieval via polling API
    - SQS message publishing
    - Redis-based idempotency
+   - *Missing: Status update consumer for delivery-status-queue*
 
 2. **Delivery Service** (Port 3002)
-   - SQS message consumption
+   - SQS message consumption from orders-queue
    - Shipment creation and tracking
-   - Status updates with order synchronization
+   - Status updates published to SQS
    - Delivery event logging
+   - *Issue: Publishing to wrong queue name*
 
 ### Infrastructure
 - **PostgreSQL**: Primary database for orders, shipments, and audit logs
@@ -183,10 +186,11 @@ npm test -- --grep "OrderService"
 
 ## 🔄 Message Flow
 
-1. **Order Creation**: Client → Order Service → Database + SQS
-2. **Shipment Creation**: SQS → Delivery Service → Database
-3. **Status Updates**: Delivery Service → Database + SQS
-4. **Order Sync**: SQS → Order Service → Database
+1. **Order Creation**: Client → Order Service → Database + SQS ✅
+2. **Shipment Creation**: SQS → Delivery Service → Database ✅
+3. **Status Updates**: Delivery Service → Database + SQS ✅
+4. **Order Sync**: SQS → Order Service → Database ❌ *Not implemented*
+5. **Customer Updates**: Client polls Order Service API ✅
 
 > 🎯 **See It Live**: Run `./demo/demo.sh` to watch this complete flow in action with real API calls and database updates.
 
@@ -242,6 +246,8 @@ DELIVERY_SERVICE_PORT=3002
 ✅ **Testing**: Unit tests for critical paths
 
 ### Production Enhancements (Comments in Code)
+- **Real-time Notifications**: WebSocket/SSE implementation
+- **Status Sync**: Order Service consumer for delivery status updates
 - **Scalability**: Load balancers, auto-scaling groups
 - **Security**: OAuth2 server, refresh tokens, rate limiting
 - **Observability**: Distributed tracing, metrics, alerting

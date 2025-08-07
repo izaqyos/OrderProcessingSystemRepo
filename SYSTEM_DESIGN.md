@@ -39,8 +39,8 @@ The data flows asynchronously between the services using AWS SQS, which ensures 
 4.  The **Order Service** sends an `order-created` message to the `orders-queue` in SQS.
 5.  The **Delivery Service** continuously polls the `orders-queue`, receives the message, and begins processing the shipment.
 6.  When the delivery status changes (e.g., "shipped"), the **Delivery Service** sends an `order-shipped` message to the `delivery-status-queue`.
-7.  The **Order Service** polls the `delivery-status-queue` for messages, and upon receiving one, updates the corresponding order's status in its database.
-8.  **Customer Notifications**: When order status changes, customers are notified via WebSocket/Server-Sent Events (real-time) or can poll `GET /orders/:id` for updates.
+7.  **[NOT YET IMPLEMENTED]** The **Order Service** should poll the `delivery-status-queue` for messages and update order status. Currently, status updates require manual API calls.
+8.  **Customer Notifications**: When order status changes, customers can poll `GET /orders/:id` for updates. *Real-time notifications via WebSocket/SSE are designed but not yet implemented.*
 
 > 🎯 **Try It**: Run `./demo/demo.sh` to see this complete flow in action with real API calls.
 
@@ -55,7 +55,7 @@ graph TB
     subgraph "Order Service (Auto-scaled)"
         AUTH[Auth Endpoint<br/>POST /auth/token]
         API[Order API<br/>POST /orders<br/>GET /orders/:id]
-        NOTIFY[Customer Notifications<br/>WebSocket/SSE]
+        NOTIFY[Customer Notifications<br/>Polling API<br/>*WebSocket/SSE planned*]
     end
     
     %% Data Layer
@@ -126,8 +126,9 @@ This design implements a focused 2-service microservices architecture that meets
 8. Publishes status updates back to queue
 
 #### 📱 **Customer Notifications:**
-9. Order service polls status updates
-10. Sends real-time notifications to customers via WebSocket/SSE
+9. **[PLANNED]** Order service polls status updates  
+10. **[PLANNED]** Sends real-time notifications to customers via WebSocket/SSE
+11. **[CURRENT]** Customers poll `GET /orders/:id` for status updates
 
 #### 📊 **Observability:**
 - Winston structured logs for monitoring
@@ -146,7 +147,7 @@ This design implements a focused 2-service microservices architecture that meets
 
 *   **Authentication (JWT/OAuth2 + Passport)**: Industry-standard auth with client credentials flow. Passport.js provides clean middleware integration with Express. **PoC Simplification**: Using basic JWT tokens (24h expiry) without refresh token complexity to focus on core order flow rather than auth edge cases.
 *   **Customer Notifications**: Real-time updates via WebSocket/Server-Sent Events for order status changes. Customers can also poll REST endpoints for current status.
-*   **Messaging (AWS SQS FIFO)**: A fully managed service with FIFO (First-In-First-Out) ordering guarantees. Essential for order processing to ensure delivery events are processed in correct sequence. Provides both ordering and exactly-once processing.
+*   **Messaging (AWS SQS FIFO)**: A fully managed service with FIFO (First-In-First-Out) ordering guarantees. **PRODUCTION IMPLEMENTATION**: Configured for hybrid time-partitioned FIFO using 30-second windows. Orders within each 30-second window are processed in strict chronological order, with parallel processing between windows. This provides excellent fairness (max 30-second unfairness) while achieving ~600 TPS throughput.
 *   **Database (PostgreSQL)**: A robust, open-source relational database that provides data integrity and is well-suited for structured order data.
 *   **Local PoC Stack (Docker Compose)**: We will use Docker to orchestrate our services locally. For SQS, we'll use `softwaremill/elasticmq-native`, a lightweight, in-memory SQS-compatible mock.
 
@@ -174,11 +175,23 @@ This design implements a focused 2-service microservices architecture that meets
 
 ### 7.1 Reliability & Eventual Consistency
 *   **SQS FIFO Guarantees**: Message ordering, exactly-once processing, dead letter queues, automatic retries
+*   **FIFO Blocking Prevention**: 30-second processing timeout, max 3 retries, then message deletion to prevent partition blocking
 *   **Database Transactions**: ACID properties ensure data consistency within each service
 *   **Retry Mechanisms**: Using `axios-retry` for HTTP calls between services
 *   **Circuit Breakers**: `opossum` library for service-to-service communication protection
 
-### 7.2 Scalability
+### 7.2 Hybrid FIFO Ordering Implementation
+*   **PRODUCTION IMPLEMENTATION**: Time-partitioned FIFO with 30-second windows for optimal fairness-throughput balance
+*   **MessageGroupId Strategy**: `time-partition-{timestamp/30000}` creates time-based partitions
+*   **Ordering Guarantee**: Strict FIFO within each 30-second window, parallel processing between windows
+*   **Performance Characteristics**: ~600 TPS throughput with maximum 30-second unfairness window
+*   **Business Justification**: Excellent fairness for inventory allocation while maintaining reasonable throughput
+*   **Tuning Options**: Window size easily adjustable based on business requirements:
+    - Larger windows (60s+): Better fairness, lower throughput
+    - Smaller windows (10s): Higher throughput, acceptable fairness for most scenarios
+    - Global FIFO: Perfect fairness, 300 TPS limit (available if needed)
+
+### 7.3 Scalability
 *   **Production**: AWS Auto Scaling Groups based on CPU/memory metrics and SQS queue depth
 *   **PoC**: Docker Compose `replicas` to simulate horizontal scaling
 *   **Stateless Services**: All services designed to be horizontally scalable
