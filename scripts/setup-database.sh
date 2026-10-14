@@ -13,7 +13,7 @@ DB_HOST=${DB_HOST:-localhost}
 DB_PORT=${DB_PORT:-5432}
 DB_NAME=${DB_NAME:-orderprocessing}
 DB_USER=${DB_USER:-admin}
-DB_PASSWORD=${DB_PASSWORD:-admin123}
+DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD must be set (see env.example)}
 
 # Colors for output
 RED='\033[0;31m'

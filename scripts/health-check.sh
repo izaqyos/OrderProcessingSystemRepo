@@ -138,31 +138,16 @@ print_section "4. DATABASE INSPECTION"
 # =============================================================================
 
 echo "Database Connection Test:"
-if PGPASSWORD=admin123 psql -h localhost -p 5432 -U admin -d orderprocessing -c "SELECT 1;" > /dev/null 2>&1; then
-    print_success "Database connection successful"
-    DB_USER="admin"
-    DB_PASSWORD="admin123"
-    DB_NAME="orderprocessing"
-else
-    print_error "Database connection failed with admin/orderprocessing"
-    echo "Trying alternative credentials..."
-    if PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d order_processing -c "SELECT 1;" > /dev/null 2>&1; then
-        print_success "Database connection successful (alternative credentials)"
-        DB_USER="postgres"
-        DB_PASSWORD="postgres"
-        DB_NAME="order_processing"
-    else
-        print_error "All database connection attempts failed"
-        DB_USER="admin"
-        DB_PASSWORD="admin123"
-        DB_NAME="orderprocessing"
-    fi
-fi
-
-# Use discovered or default credentials
 DB_USER=${DB_USER:-admin}
-DB_PASSWORD=${DB_PASSWORD:-admin123}
+DB_PASSWORD=${DB_PASSWORD:-}
 DB_NAME=${DB_NAME:-orderprocessing}
+if [ -z "$DB_PASSWORD" ]; then
+    print_error "DB_PASSWORD is not set; export it (see env.example) to enable database inspection"
+elif PGPASSWORD=$DB_PASSWORD psql -h localhost -p 5432 -U $DB_USER -d $DB_NAME -c "SELECT 1;" > /dev/null 2>&1; then
+    print_success "Database connection successful"
+else
+    print_error "Database connection failed for user $DB_USER on $DB_NAME"
+fi
 
 echo ""
 echo "Database Tables:"
